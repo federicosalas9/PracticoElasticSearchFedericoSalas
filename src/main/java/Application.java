@@ -68,12 +68,18 @@ public class Application {
         port(8000);
         //Crear un item
         post("/items", (request, response) -> {
-            response.type("application/json");
-            Item item = new Gson().fromJson(request.body(), Item.class);
-            item=itemService.addItem(item,INDEX,TYPE,restHighLevelClient);
-            System.out.println("Item insertado --> " + item);
-            response.status(201);
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue creado"));
+            try{
+                response.type("application/json");
+                Item item = new Gson().fromJson(request.body(), Item.class);
+                item=itemService.addItem(item,INDEX,TYPE,restHighLevelClient);
+                System.out.println("Item insertado --> " + item);
+                response.status(201);
+                return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue creado"));
+            } catch (Exception exception){
+                response.status(400);
+                return new Gson().toJson(new StandardResponse(StatusResponse.ERROR, exception.getMessage()));
+            }
+
         });
 
         //Mostrar un item segun el id
@@ -107,7 +113,6 @@ public class Application {
             System.out.println("Item eliminado");
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue borrado"));
         });
-
         //---------------------------------------------------------------
     }
 }
