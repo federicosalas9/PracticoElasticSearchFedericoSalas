@@ -61,7 +61,6 @@ public class Application {
     }
 
     private static Item insertItem(Item item) {
-        item.setId(UUID.randomUUID().toString());
         Map<String, Object> dataMap = new HashMap<String, Object>();
         dataMap.put("id", item.getId());
         dataMap.put("title", item.getTitle());
@@ -124,8 +123,8 @@ public class Application {
         post("/items", (request, response) -> {
             response.type("application/json");
             Item item = new Gson().fromJson(request.body(), Item.class);
-            Item item1 = insertItem(item);
-            System.out.println("Item inserted --> " + item1);
+            item = insertItem(item);
+            System.out.println("Item insertado --> " + item);
             response.status(201);
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue creado"));
         });
@@ -134,7 +133,8 @@ public class Application {
         get("/items/:id", (request, response) -> {
             response.type("application/json");
             Item itemFromDB = getItemById(request.params(":id"));
-            return new Gson().toJsonTree(new StandardResponse(StatusResponse.SUCCESS,
+            System.out.println("Item mostrado --> " + itemFromDB);
+            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS,
                     new Gson().toJsonTree(itemFromDB)));
         });
 
@@ -144,6 +144,7 @@ public class Application {
                 response.type("application/json");
                 Item item = new Gson().fromJson(request.body(), Item.class);
                 updateItemById(item.getId(), item);
+                System.out.println("Item editado --> " + item);
                 response.status(201);
                 return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(item)));
             } catch (Exception exception) {
@@ -156,29 +157,10 @@ public class Application {
         delete("/items/:id", (request, response) -> {
             response.type("application/json");
             deleteItemById(request.params(":id"));
+            System.out.println("Item eliminado");
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue borrado"));
         });
 
         //---------------------------------------------------------------
-        System.out.println("Inserting a new Item with title Iphone X...");
-        Item item = new Item();
-        item.setTitle("iphone x");
-        item = insertItem(item);
-        System.out.println("Item inserted --> " + item);
-
-        System.out.println("Changing title to `Iphone 10`...");
-        item.setTitle("Iphone 10");
-        updateItemById(item.getId(), item);
-        System.out.println("Item updated  --> " + item);
-
-        System.out.println("Getting Ihpone 10...");
-        Item itemFromDB = getItemById(item.getId());
-        System.out.println("Item from DB  --> " + itemFromDB);
-
-        System.out.println("Deleting Iphone 10...");
-        deleteItemById(itemFromDB.getId());
-        System.out.println("Person Deleted");
-
-        //closeConnection();
     }
 }
