@@ -19,6 +19,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import com.google.gson.Gson;
+
+import static spark.Spark.*;
+
 public class Application {
 
     //The config parameters for the connection
@@ -36,11 +40,12 @@ public class Application {
     /**
      * Implemented Singleton pattern here
      * so that there is just one connection at a time.
+     *
      * @return RestHighLevelClient
      */
     private static synchronized RestHighLevelClient makeConnection() {
 
-        if(restHighLevelClient == null) {
+        if (restHighLevelClient == null) {
             restHighLevelClient = new RestHighLevelClient(
                     RestClient.builder(
                             new HttpHost(HOST, PORT_ONE, SCHEME),
@@ -55,7 +60,7 @@ public class Application {
         restHighLevelClient = null;
     }
 
-    private static Item insertItem(Item item){
+    private static Item insertItem(Item item) {
         item.setId(UUID.randomUUID().toString());
         Map<String, Object> dataMap = new HashMap<String, Object>();
         dataMap.put("id", item.getId());
@@ -64,27 +69,27 @@ public class Application {
                 .source(dataMap);
         try {
             IndexResponse response = restHighLevelClient.index(indexRequest);
-        } catch(ElasticsearchException e) {
+        } catch (ElasticsearchException e) {
             e.getDetailedMessage();
-        } catch (IOException ex){
+        } catch (IOException ex) {
             ex.getLocalizedMessage();
         }
         return item;
     }
 
-    private static Item getItemById(String id){
+    private static Item getItemById(String id) {
         GetRequest getItemRequest = new GetRequest(INDEX, TYPE, id);
         GetResponse getResponse = null;
         try {
             getResponse = restHighLevelClient.get(getItemRequest);
-        } catch (IOException e){
+        } catch (IOException e) {
             e.getLocalizedMessage();
         }
         return getResponse != null ?
                 objectMapper.convertValue(getResponse.getSourceAsMap(), Item.class) : null;
     }
 
-    private static Item updateItemById(String id, Item item){
+    private static Item updateItemById(String id, Item item) {
         UpdateRequest updateRequest = new UpdateRequest(INDEX, TYPE, id)
                 .fetchSource(true);    // Fetch Object after its update
         try {
@@ -92,20 +97,20 @@ public class Application {
             updateRequest.doc(itemJson, XContentType.JSON);
             UpdateResponse updateResponse = restHighLevelClient.update(updateRequest);
             return objectMapper.convertValue(updateResponse.getGetResult().sourceAsMap(), Item.class);
-        }catch (JsonProcessingException e){
+        } catch (JsonProcessingException e) {
             e.getMessage();
-        } catch (IOException e){
+        } catch (IOException e) {
             e.getLocalizedMessage();
         }
         System.out.println("Unable to update item");
         return null;
     }
 
-    private static void deletePersonById(String id) {
+    private static void deleteItemById(String id) {
         DeleteRequest deleteRequest = new DeleteRequest(INDEX, TYPE, id);
         try {
             DeleteResponse deleteResponse = restHighLevelClient.delete(deleteRequest);
-        } catch (IOException e){
+        } catch (IOException e) {
             e.getLocalizedMessage();
         }
     }
@@ -113,7 +118,48 @@ public class Application {
     public static void main(String[] args) throws IOException {
 
         makeConnection();
+        //---------------------------------------------------------------
+        port(8000);
+        //Crear un item
+        post("/items", (request, response) -> {
+            response.type("application/json");
+            Item item = new Gson().fromJson(request.body(), Item.class);
+            Item item1 = insertItem(item);
+            System.out.println("Item inserted --> " + item1);
+            response.status(201);
+            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue creado"));
+        });
 
+        //Mostrar un item segun el id
+        get("/items/:id", (request, response) -> {
+            response.type("application/json");
+            Item itemFromDB = getItemById(request.params(":id"));
+            return new Gson().toJsonTree(new StandardResponse(StatusResponse.SUCCESS,
+                    new Gson().toJsonTree(itemFromDB)));
+        });
+
+        //Editar un item segun el id
+        put("/items", (request, response) -> {
+            try {
+                response.type("application/json");
+                Item item = new Gson().fromJson(request.body(), Item.class);
+                updateItemById(item.getId(), item);
+                response.status(201);
+                return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(item)));
+            } catch (Exception exception) {
+                response.status(400);
+                return new Gson().toJson(new StandardResponse(StatusResponse.ERROR, exception.getMessage()));
+            }
+        });
+
+        //Eliminar un item segun id
+        delete("/items/:id", (request, response) -> {
+            response.type("application/json");
+            deleteItemById(request.params(":id"));
+            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue borrado"));
+        });
+
+        //---------------------------------------------------------------
         System.out.println("Inserting a new Item with title Iphone X...");
         Item item = new Item();
         item.setTitle("iphone x");
@@ -130,9 +176,9 @@ public class Application {
         System.out.println("Item from DB  --> " + itemFromDB);
 
         System.out.println("Deleting Iphone 10...");
-        deletePersonById(itemFromDB.getId());
+        deleteItemById(itemFromDB.getId());
         System.out.println("Person Deleted");
 
-        closeConnection();
+        //closeConnection();
     }
 }
