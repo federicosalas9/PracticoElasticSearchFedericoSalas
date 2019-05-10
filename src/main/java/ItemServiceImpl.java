@@ -24,13 +24,13 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public Item addItem(Item item, String index, String type, RestHighLevelClient restHighLevelClient) throws ItemException {
         Map<String, Object> dataMap = new HashMap<String, Object>();
-        if(item==null){
+        if (item == null) {
             throw new ItemException("El item provisto es nulo");
         }
-        if(item.getId().equals("")){
+        if (item.getId().equals("")) {
             throw new ItemException("El id del item esta vacio");
         }
-        if(item.getTitle().equals("")){
+        if (item.getTitle().equals("")) {
             throw new ItemException("El title del item esta vacio");
         }
         dataMap.put("id", item.getId());
@@ -61,7 +61,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public Item editItem(String id,Item item, String index, String type, RestHighLevelClient restHighLevelClient){
+    public Item editItem(String id, Item item, String index, String type, RestHighLevelClient restHighLevelClient) {
 
         UpdateRequest updateRequest = new UpdateRequest(index, type, id)
                 .fetchSource(true);    // Fetch Object after its update

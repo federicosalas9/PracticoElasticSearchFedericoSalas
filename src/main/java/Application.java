@@ -43,7 +43,7 @@ public class Application {
      *
      * @return RestHighLevelClient
      */
-   private static synchronized RestHighLevelClient makeConnection() {
+    private static synchronized RestHighLevelClient makeConnection() {
 
         if (restHighLevelClient == null) {
             restHighLevelClient = new RestHighLevelClient(
@@ -61,6 +61,7 @@ public class Application {
     }
 
     private static final ItemService itemService = new ItemServiceImpl();
+
     public static void main(String[] args) throws IOException {
 
         makeConnection();
@@ -68,14 +69,14 @@ public class Application {
         port(8000);
         //Crear un item
         post("/items", (request, response) -> {
-            try{
+            try {
                 response.type("application/json");
                 Item item = new Gson().fromJson(request.body(), Item.class);
-                item=itemService.addItem(item,INDEX,TYPE,restHighLevelClient);
+                item = itemService.addItem(item, INDEX, TYPE, restHighLevelClient);
                 System.out.println("Item insertado --> " + item);
                 response.status(201);
                 return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue creado"));
-            } catch (Exception exception){
+            } catch (Exception exception) {
                 response.status(400);
                 return new Gson().toJson(new StandardResponse(StatusResponse.ERROR, exception.getMessage()));
             }
@@ -85,7 +86,7 @@ public class Application {
         //Mostrar un item segun el id
         get("/items/:id", (request, response) -> {
             response.type("application/json");
-            Item itemFromDB = itemService.getItem(request.params(":id"),INDEX,TYPE,restHighLevelClient);
+            Item itemFromDB = itemService.getItem(request.params(":id"), INDEX, TYPE, restHighLevelClient);
             System.out.println("Item mostrado --> " + itemFromDB);
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS,
                     new Gson().toJsonTree(itemFromDB)));
@@ -96,7 +97,7 @@ public class Application {
             try {
                 response.type("application/json");
                 Item item = new Gson().fromJson(request.body(), Item.class);
-                itemService.editItem(item.getId(),item,INDEX,TYPE,restHighLevelClient);
+                itemService.editItem(item.getId(), item, INDEX, TYPE, restHighLevelClient);
                 System.out.println("Item editado --> " + item);
                 response.status(201);
                 return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(item)));
@@ -109,7 +110,7 @@ public class Application {
         //Eliminar un item segun id
         delete("/items/:id", (request, response) -> {
             response.type("application/json");
-            itemService.deleteItem(request.params(":id"),INDEX,TYPE,restHighLevelClient);
+            itemService.deleteItem(request.params(":id"), INDEX, TYPE, restHighLevelClient);
             System.out.println("Item eliminado");
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue borrado"));
         });
