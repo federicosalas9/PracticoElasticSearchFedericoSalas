@@ -43,7 +43,7 @@ public class Application {
      *
      * @return RestHighLevelClient
      */
-    private static synchronized RestHighLevelClient makeConnection() {
+   private static synchronized RestHighLevelClient makeConnection() {
 
         if (restHighLevelClient == null) {
             restHighLevelClient = new RestHighLevelClient(
@@ -60,60 +60,7 @@ public class Application {
         restHighLevelClient = null;
     }
 
-    private static Item insertItem(Item item) {
-        Map<String, Object> dataMap = new HashMap<String, Object>();
-        dataMap.put("id", item.getId());
-        dataMap.put("title", item.getTitle());
-        IndexRequest indexRequest = new IndexRequest(INDEX, TYPE, item.getId())
-                .source(dataMap);
-        try {
-            IndexResponse response = restHighLevelClient.index(indexRequest);
-        } catch (ElasticsearchException e) {
-            e.getDetailedMessage();
-        } catch (IOException ex) {
-            ex.getLocalizedMessage();
-        }
-        return item;
-    }
-
-    private static Item getItemById(String id) {
-        GetRequest getItemRequest = new GetRequest(INDEX, TYPE, id);
-        GetResponse getResponse = null;
-        try {
-            getResponse = restHighLevelClient.get(getItemRequest);
-        } catch (IOException e) {
-            e.getLocalizedMessage();
-        }
-        return getResponse != null ?
-                objectMapper.convertValue(getResponse.getSourceAsMap(), Item.class) : null;
-    }
-
-    private static Item updateItemById(String id, Item item) {
-        UpdateRequest updateRequest = new UpdateRequest(INDEX, TYPE, id)
-                .fetchSource(true);    // Fetch Object after its update
-        try {
-            String itemJson = objectMapper.writeValueAsString(item);
-            updateRequest.doc(itemJson, XContentType.JSON);
-            UpdateResponse updateResponse = restHighLevelClient.update(updateRequest);
-            return objectMapper.convertValue(updateResponse.getGetResult().sourceAsMap(), Item.class);
-        } catch (JsonProcessingException e) {
-            e.getMessage();
-        } catch (IOException e) {
-            e.getLocalizedMessage();
-        }
-        System.out.println("Unable to update item");
-        return null;
-    }
-
-    private static void deleteItemById(String id) {
-        DeleteRequest deleteRequest = new DeleteRequest(INDEX, TYPE, id);
-        try {
-            DeleteResponse deleteResponse = restHighLevelClient.delete(deleteRequest);
-        } catch (IOException e) {
-            e.getLocalizedMessage();
-        }
-    }
-
+    private static final ItemService itemService = new ItemServiceImpl();
     public static void main(String[] args) throws IOException {
 
         makeConnection();
@@ -123,7 +70,7 @@ public class Application {
         post("/items", (request, response) -> {
             response.type("application/json");
             Item item = new Gson().fromJson(request.body(), Item.class);
-            item = insertItem(item);
+            item=itemService.addItem(item,INDEX,TYPE,restHighLevelClient);
             System.out.println("Item insertado --> " + item);
             response.status(201);
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue creado"));
@@ -132,7 +79,7 @@ public class Application {
         //Mostrar un item segun el id
         get("/items/:id", (request, response) -> {
             response.type("application/json");
-            Item itemFromDB = getItemById(request.params(":id"));
+            Item itemFromDB = itemService.getItem(request.params(":id"),INDEX,TYPE,restHighLevelClient);
             System.out.println("Item mostrado --> " + itemFromDB);
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS,
                     new Gson().toJsonTree(itemFromDB)));
@@ -143,7 +90,7 @@ public class Application {
             try {
                 response.type("application/json");
                 Item item = new Gson().fromJson(request.body(), Item.class);
-                updateItemById(item.getId(), item);
+                itemService.editItem(item.getId(),item,INDEX,TYPE,restHighLevelClient);
                 System.out.println("Item editado --> " + item);
                 response.status(201);
                 return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(item)));
@@ -156,7 +103,7 @@ public class Application {
         //Eliminar un item segun id
         delete("/items/:id", (request, response) -> {
             response.type("application/json");
-            deleteItemById(request.params(":id"));
+            itemService.deleteItem(request.params(":id"),INDEX,TYPE,restHighLevelClient);
             System.out.println("Item eliminado");
             return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "El item fue borrado"));
         });
